@@ -2,66 +2,217 @@
 <html>
 <head>
 <title>rectangles.html</title>
+<style>
+div {
+    outline: 1px solid white;
+}
+</style>
 <script type="text/javascript">
 
 
-var	nRectangles = 3,
-	containerWidth = 600,
-	containerHeight = 600,
-	minRectDim = 50,
-	maxRectDim = 100;
+var	nRectangles = 20,
+    containerWidth = 500,
+    containerHeight = 500,
+    minRectDim = 50,
+    maxRectDim = 100;
 
 /*
 Specifications:
 
-	- The above pseudo-constant values may vary. However, it is guaranteed that:
+    - The above pseudo-constant values may vary. However, it is guaranteed that:
 
-		a) containerWidth >= (nRectangles x maxRectDim)
-			and
-		b) containerHeight >= (nRectangles x maxRectDim)
+        a) containerWidth >= (nRectangles x maxRectDim)
+            and
+        b) containerHeight >= (nRectangles x maxRectDim)
 
-		so that the "on load" processing below is always possible.
+        so that the "on load" processing below is always possible.
 
-	- The action takes place in a (containerWidth x containerHeight) container random-color div with top-left border at 0,0 screen (window) coordinates.
+    - The action takes place in a (containerWidth x containerHeight) container random-color div with top-left border at 0,0 screen (window) coordinates.
 
-	- On load, nRectangles random-sized (each side minRectDim to maxRectDim pixels included) and random-color rectangles are displayed according to the following rules:
-	
-		a) They must not overlap each other
-		b) They must be fully contained within the container div
-		c) Their position is random, given the above two constraints
+    - On load, nRectangles random-sized (each side minRectDim to maxRectDim pixels included) and random-color rectangles are displayed according to the following rules:
 
-		The mouse cursor position at load is ignored.
+        a) They must not overlap each other
+        b) They must be fully contained within the container div
+        c) Their position is random, given the above two constraints
 
-	- Each time a mouse cursor is positioned over a rectangle, it must change color to a new random color.
+        The mouse cursor position at load is ignored.
 
-	- If the cursor remains over a rectangle for 3 seconds, the rectangle is re-positioned (no animation) in such a way that:
+    - Each time a mouse cursor is positioned over a rectangle, it must change color to a new random color.
 
-		a) It is no longer under the mouse cursor position
-		b) It is still fully visible within the container div
-		c) It does not overlap with the other rectangles
+    - If the cursor remains over a rectangle for 3 seconds, the rectangle is re-positioned (no animation) in such a way that:
 
-			Should these be impossible, the rectangle is permanently removed
+        a) It is no longer under the mouse cursor position
+        b) It is still fully visible within the container div
+        c) It does not overlap with the other rectangles
 
-		d) The new position is random, given the above three constraints
+            Should these be impossible, the rectangle is permanently removed
+
+        d) The new position is random, given the above three constraints
 
 
 Further notes:
 
-	- You may use a framework, yet raw DOM would be appreciated.
+    - You may use a framework, yet raw DOM would be appreciated.
 
-	- Focus on clean and readable/understandable code before focusing on performance.
+    - Focus on clean and readable/understandable code before focusing on performance.
 
-	- Once done, we will ask to expose /viva voice/ the way you have proceeded to write the program.
+    - Once done, we will ask to expose /viva voice/ the way you have proceeded to write the program.
 */
 
 /* Please write your JavaScript code here */
 
+// maximal number of tries to find a potential rectangle size and position
+var MAX_RANDOM_TRIES = 1000;
+
+// required to track mouse position in order to fulfill the rectangle move requirement
+var mouse = {x: 0, y: 0};
+
+document.addEventListener('mousemove', function(e) {
+    mouse.x = e.clientX || e.pageX;
+    mouse.y = e.clientY || e.pageY
+}, false);
+
+// contains all rectangles
+var rectPool = [];
+
+function isValid (data) {
+
+    // two rectangles intersect if BOTH dimension do overlap
+    function _intersect (r1, r2) {
+        // check horizontal direction
+        if (Math.max(r1.left, r2.left) <= Math.min(r1.left + r1.width, r2.left + r2.width)) {
+            // check vertical direction
+            if (Math.max(r1.top, r2.top) <= Math.min(r1.top + r1.height, r2.top + r2.height)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    for (var i = 0; i < rectPool.length; i++) {
+        if (_intersect(rectPool[i].data(), data)) {
+            return false;
+            break;
+        }
+    }
+
+    return true;
+}
+// returns a random integer ranging from min to max with equal distribution
+function randomInt(min, max) {
+    return Math.ceil(Math.random() * (max - min)) + min;
+}
+
+// returns a random color from a predefined list of colors with the same probability for each color
+function randomColor() {
+    var colors = ['yellow', 'red', 'blue', 'green', 'gray', 'orange', 'magenta', 'purple', 'steelblue'];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function createDiv(data) {
+    var div = $('<div>').css(data).css('position', 'absolute');
+    $(document.body).append(div);
+    div.data(data);
+    return div;
+}
+
+function createSmallRectAtCursor () {
+    var data = {
+        width: 2,
+        height: 2,
+        top: mouse.y,
+        left: mouse.x,
+        backgroundColor: 'white'
+    };
+
+    return createDiv(data);
+}
+
+function createRect(prototypeData) {
+    var rect = null;
+
+    // note!, this is no exhaustive search for a new rectangle and rectangle position,
+    // there might be enough place somewhere, but the choosen algorithmen (random size and random position)
+    // does not allow do do much better
+    for (var i = 0; i < MAX_RANDOM_TRIES; i++) {
+        var data = {
+            width: prototypeData ? prototypeData.width : randomInt(minRectDim, maxRectDim),
+            height: prototypeData ? prototypeData.height : randomInt(minRectDim, maxRectDim),
+            top: randomInt(0, containerWidth - maxRectDim),
+            left: randomInt(0, containerWidth - maxRectDim),
+            backgroundColor: prototypeData ? prototypeData.backgroundColor : randomColor()
+        };
+        if (isValid(data)) {
+            rect = createDiv(data);
+            rectPool.push(rect);
+            console.log('rectPool length ', rectPool.length);
+            break;
+        }
+    }
+
+    if (!rect) {
+        alert('Discard new rectangle, contraints could be not fullfilled even after ' + MAX_RANDOM_TRIES + ' tries');
+        return;
+    }
+
+    rect.on('mouseover', function () {
+        var newColor = randomColor();
+        rect.data().backgroundColor = newColor;
+        rect.css('background-color', newColor);
+
+        rect.timer = setTimeout(function () {
+            var prototypeData = rect.data();
+
+            // remove current rect from rectPool
+            var position = $.inArray(rect, rectPool);
+            if (position != -1) {
+                rectPool.splice(position, 1);
+            }
+            // remove from DOM
+            rect.remove();
+
+            // insert placeholder rectangle
+            var placeholder = createSmallRectAtCursor();
+            rectPool.unshift(placeholder);
+
+            // now try to create regular rectangle
+            createRect(prototypeData);
+
+            // remove placeholder
+            rectPool.shift();
+            placeholder.remove();
+        }, 3000)
+    });
+    rect.on('mouseout', function () {
+        clearTimeout(rect.timer);
+    });
+
+    return rect;
+}
+
+window.onload = function () {
+    // create container at 0 x 0
+    createDiv({
+        width: containerWidth,
+        height: containerHeight,
+        backgroundColor: randomColor(),
+        top: 0,
+        left: 0
+    });
+
+    // create reactangles
+    for (var i = 0; i < nRectangles; i++) {
+        rect = createRect();
+    }
+}
+
 </script>
 <!-- If using a framework, please insert <script src> here -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 </head>
-<body><!-- 
+<body><!--
 
-	No HTML here! Everything must be written in JavaScript.
-	
+    No HTML here! Everything must be written in JavaScript.
+
 --></body>
 </html>
