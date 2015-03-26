@@ -3,16 +3,20 @@
 <head>
 <title>rectangles.html</title>
 <style>
-div {
-    outline: 1px solid white;
-}
+    body {
+        background-color: #333;
+    }
+    div {
+        position: absolute;
+        outline: 1px solid white;
+    }
 </style>
 <script type="text/javascript">
 
 
-var	nRectangles = 20,
-    containerWidth = 500,
-    containerHeight = 500,
+var	nRectangles = 25,
+    containerWidth = 600,
+    containerHeight = 600,
     minRectDim = 50,
     maxRectDim = 100;
 
@@ -64,59 +68,30 @@ Further notes:
 // maximal number of tries to find a potential rectangle size and position
 var MAX_RANDOM_TRIES = 1000;
 
-// required to track mouse position in order to fulfill the rectangle move requirement
-var mouse = {x: 0, y: 0};
-
-document.addEventListener('mousemove', function(e) {
-    mouse.x = e.clientX || e.pageX;
-    mouse.y = e.clientY || e.pageY
-}, false);
+// timeout for the mouseover behaviour
+var MOUSEOVER_DELAY = 3000
 
 // contains all rectangles
 var rectPool = [];
 
-function isValid (data) {
+// the demo starts here
+window.onload = function () {
+    // create container at 0 x 0
+    createDiv({
+        width: containerWidth,
+        height: containerHeight,
+        backgroundColor: randomColor(),
+        top: 0,
+        left: 0
+    });
 
-    // two rectangles intersect if BOTH dimension do overlap
-    function _intersect (r1, r2) {
-        // check horizontal direction
-        if (Math.max(r1.left, r2.left) <= Math.min(r1.left + r1.width, r2.left + r2.width)) {
-            // check vertical direction
-            if (Math.max(r1.top, r2.top) <= Math.min(r1.top + r1.height, r2.top + r2.height)) {
-                return true;
-            }
-        }
-        return false;
+    // create rectangles
+    for (var i = 0; i < nRectangles; i++) {
+        createRect();
     }
-
-    for (var i = 0; i < rectPool.length; i++) {
-        if (_intersect(rectPool[i].data(), data)) {
-            return false;
-            break;
-        }
-    }
-
-    return true;
-}
-// returns a random integer ranging from min to max with equal distribution
-function randomInt(min, max) {
-    return Math.ceil(Math.random() * (max - min)) + min;
 }
 
-// returns a random color from a predefined list of colors with the same probability for each color
-function randomColor() {
-    var colors = ['yellow', 'red', 'blue', 'green', 'gray', 'orange', 'magenta', 'purple', 'steelblue'];
-    return colors[Math.floor(Math.random() * colors.length)];
-}
-
-function createDiv(data) {
-    var div = $('<div>').css(data).css('position', 'absolute');
-    $(document.body).append(div);
-    div.data(data);
-    return div;
-}
-
-function createSmallRectAtCursor () {
+function createPlaceholderAtCursor () {
     var data = {
         width: 2,
         height: 2,
@@ -145,7 +120,6 @@ function createRect(prototypeData) {
         if (isValid(data)) {
             rect = createDiv(data);
             rectPool.push(rect);
-            console.log('rectPool length ', rectPool.length);
             break;
         }
     }
@@ -172,7 +146,7 @@ function createRect(prototypeData) {
             rect.remove();
 
             // insert placeholder rectangle
-            var placeholder = createSmallRectAtCursor();
+            var placeholder = createPlaceholderAtCursor();
             rectPool.unshift(placeholder);
 
             // now try to create regular rectangle
@@ -181,8 +155,10 @@ function createRect(prototypeData) {
             // remove placeholder
             rectPool.shift();
             placeholder.remove();
-        }, 3000)
+
+        }, MOUSEOVER_DELAY)
     });
+
     rect.on('mouseout', function () {
         clearTimeout(rect.timer);
     });
@@ -190,21 +166,58 @@ function createRect(prototypeData) {
     return rect;
 }
 
-window.onload = function () {
-    // create container at 0 x 0
-    createDiv({
-        width: containerWidth,
-        height: containerHeight,
-        backgroundColor: randomColor(),
-        top: 0,
-        left: 0
-    });
+// test if provided size and position data conflict with existing rectangles
+function isValid (data) {
 
-    // create reactangles
-    for (var i = 0; i < nRectangles; i++) {
-        rect = createRect();
+    // two rectangles intersect if BOTH dimension do overlap
+    function _intersect (r1, r2) {
+        // check horizontal direction
+        if (Math.max(r1.left, r2.left) <= Math.min(r1.left + r1.width, r2.left + r2.width)) {
+            // check vertical direction
+            if (Math.max(r1.top, r2.top) <= Math.min(r1.top + r1.height, r2.top + r2.height)) {
+                return true;
+            }
+        }
+        return false;
     }
+
+    for (var i = 0; i < rectPool.length; i++) {
+        if (_intersect(rectPool[i].data(), data)) {
+            return false;
+            break;
+        }
+    }
+
+    return true;
 }
+
+
+/* auxilary functions */
+
+// returns a random integer ranging from min to max with equal distribution
+function randomInt(min, max) {
+    return Math.ceil(Math.random() * (max + 1 - min)) + min;
+}
+
+// returns a random color
+function randomColor() {
+    return '#'+Math.random().toString(16).substr(-6);
+}
+
+function createDiv(data) {
+    var div = $('<div>').css(data);
+    $(document.body).append(div);
+    div.data(data);
+    return div;
+}
+
+// required to track mouse position in order to fulfill the rectangle move requirement
+var mouse = {x: 0, y: 0};
+
+document.addEventListener('mousemove', function(e) {
+    mouse.x = e.clientX || e.pageX;
+    mouse.y = e.clientY || e.pageY
+}, false);
 
 </script>
 <!-- If using a framework, please insert <script src> here -->
